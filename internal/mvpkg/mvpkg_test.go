@@ -44,6 +44,7 @@ func TestBasic(t *testing.T) {
 	}
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg.go"), filepath.Join(testDir, "destination/testpkg/testpkg.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "destination/destination.go.expected.non-recursive"), filepath.Join(testDir, "destination/destination.go"), true)
+	diffFiles(t, filepath.Join(templateDir, "destination/destination_test.go.expected.non-recursive"), filepath.Join(testDir, "destination/destination_test.go"), true)
 }
 
 func TestRecursive(t *testing.T) {
@@ -64,6 +65,7 @@ func TestRecursive(t *testing.T) {
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg.go"), filepath.Join(testDir, "destination/testpkg", "testpkg.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/nested/nested.go.expected.recursive"), filepath.Join(testDir, "destination/testpkg/nested/nested.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "destination/destination.go.expected.recursive"), filepath.Join(testDir, "destination/destination.go"), true)
+	diffFiles(t, filepath.Join(templateDir, "destination/destination_test.go.expected.recursive"), filepath.Join(testDir, "destination/destination_test.go"), true)
 }
 
 func diffFiles(t testing.TB, expected, actual string, shouldEqual bool) {
