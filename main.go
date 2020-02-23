@@ -33,7 +33,12 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-	err := mvpkg.MvPkg(flag.Arg(0), flag.Arg(1), dryRunFlag, recursiveFlag, verboseFlag)
+	pwd, err := os.Getwd()
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	err = mvpkg.MvPkg(pwd, flag.Arg(0), flag.Arg(1), dryRunFlag, recursiveFlag, verboseFlag)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)

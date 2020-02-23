@@ -19,7 +19,7 @@ import (
 var errNoModules = fmt.Errorf("Not using go modules! Couldn't find go.mod file")
 
 // MvPkg moves a package from a source to a destination path within the same go module
-func MvPkg(src, dst string, dryRun bool, recursive bool, verbose bool) error {
+func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) error {
 	start := time.Now()
 	defer func() {
 		fmt.Printf("done in %s\n", time.Now().Sub(start))
@@ -30,10 +30,6 @@ func MvPkg(src, dst string, dryRun bool, recursive bool, verbose bool) error {
 			fmt.Printf(s, args...)
 		}
 	}
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
 	if path.Base(src) != path.Base(dst) {
 		return fmt.Errorf("Soruce and destination package names are not the same. Renaming not supported yet.")
 	}
@@ -43,10 +39,11 @@ func MvPkg(src, dst string, dryRun bool, recursive bool, verbose bool) error {
 	}
 	loadPath := mod + "/..."
 	printf("Loading %s\n", loadPath)
-	pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports}, loadPath)
+	pkgs, err := packages.Load(&packages.Config{Dir: pwd, Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports}, loadPath)
 	if err != nil {
 		return err
 	}
+	printf("Loaded %d packages\n", len(pkgs))
 	srcPath := path.Clean(path.Join(mod, src))
 	dstPath := path.Clean(path.Join(mod, dst))
 	var srcPkg *packages.Package
