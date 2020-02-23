@@ -16,8 +16,6 @@ import (
 	"golang.org/x/tools/go/packages"
 )
 
-var errNoModules = fmt.Errorf("Not using go modules! Couldn't find go.mod file")
-
 // MvPkg moves a package from a source to a destination path within the same go module
 func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) error {
 	start := time.Now()
@@ -35,13 +33,13 @@ func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) erro
 	}
 	mod, modDir, usingModules := goModuleNameAndPath(pwd)
 	if !usingModules {
-		return errNoModules
+		return fmt.Errorf("Not using go modules! Couldn't find go.mod file")
 	}
 	loadPath := mod + "/..."
 	printf("Loading %s\n", loadPath)
 	pkgs, err := packages.Load(&packages.Config{Dir: pwd, Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports}, loadPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("error loading packages %s: %s", loadPath, err)
 	}
 	printf("Loaded %d packages\n", len(pkgs))
 	srcPath := path.Clean(path.Join(mod, src))
@@ -72,12 +70,12 @@ func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) erro
 		for _, filename := range pkg.GoFiles {
 			srcBytes, err := ioutil.ReadFile(filename)
 			if err != nil {
-				return err
+				return fmt.Errorf("error reading file %s: %s", filename, err)
 			}
 
 			file, err := parser.ParseFile(fset, filename, srcBytes, parser.ParseComments)
 			if err != nil {
-				return err
+				return fmt.Errorf("error parsing file %s: %s", filename, err)
 			}
 
 			if astutil.RewriteImport(fset, file, srcPath, dstPath) {
@@ -85,7 +83,7 @@ func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) erro
 				var buf bytes.Buffer
 				err := printConfig.Fprint(&buf, fset, file)
 				if err != nil {
-					return err
+					return fmt.Errorf("error formatting file %s: %s", file.Name.Name, err)
 				}
 				if dryRun {
 					printf("would rewrite %s\n", filename)
@@ -93,7 +91,7 @@ func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) erro
 					printf("rewriting %s\n", filename)
 					err = ioutil.WriteFile(filename, buf.Bytes(), 0644)
 					if err != nil {
-						return err
+						return fmt.Errorf("error writing file %s: %s", filename, err)
 					}
 				}
 			}
@@ -106,7 +104,7 @@ func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) erro
 		printf("creating directory %s\n", dstDir)
 		err = os.MkdirAll(dstDir, 0755)
 		if err != nil {
-			return err
+			return fmt.Errorf("error creating directory %s: %s", dstDir, err)
 		}
 	}
 	for _, filename := range srcPkg.GoFiles {
@@ -117,7 +115,7 @@ func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) erro
 			printf("moving %s to %s\n", filename, newPath)
 			err = os.Rename(filename, newPath)
 			if err != nil {
-				return err
+				return fmt.Errorf("error moving %s to %s: %s", filename, newPath, err)
 			}
 		}
 	}
