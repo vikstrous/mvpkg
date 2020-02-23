@@ -22,7 +22,7 @@ func init() {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s <src> <dst>\n", os.Args[0], os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %s <src> <dst>\n", os.Args[0])
 		fmt.Fprintf(flag.CommandLine.Output(), "\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  mvpkg takes two positional arguments: a source and destination path\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  It works only withing a single go module and only with go module support enabled.\n")
