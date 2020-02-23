@@ -22,7 +22,7 @@ var errNoModules = fmt.Errorf("Not using go modules! Couldn't find go.mod file")
 func MvPkg(pwd, src, dst string, dryRun bool, recursive bool, verbose bool) error {
 	start := time.Now()
 	defer func() {
-		fmt.Printf("done in %s\n", time.Now().Sub(start))
+		fmt.Printf("done in %s\n", time.Since(start))
 	}()
 	printf := func(s string, args ...interface{}) {}
 	if verbose || dryRun {
