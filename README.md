@@ -9,6 +9,8 @@ or a set of packages from one path to another within the same go module. It's
 written for go modules and with performance in mind, so let me know if it's not
 fast enough for you.
 
+This tool was built because [gomvpkg](https://github.com/golang/tools/blob/e1da425f72fd3793b579f4e74d908ba96eb16c8a/cmd/gomvpkg/main.go) doesn't work with go modules.
+
 
 ## Installation:
 
