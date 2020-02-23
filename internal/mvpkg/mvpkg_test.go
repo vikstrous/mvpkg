@@ -32,7 +32,7 @@ func TestBasic(t *testing.T) {
 	defer cleanup()
 
 	// execute the package move
-	err := mvpkg.MvPkg(t.Logf, testDir, "source/testpkg", "destination/testpkg", []string{"-tags=special"}, false, false)
+	err := mvpkg.MvPkg(t.Logf, testDir+"/destination", "source/testpkg", "destination/testpkg", []string{"-tags=special"}, false, false)
 	if err != nil {
 		t.Fatalf("failed to run mvpkg: %s", err)
 	}
@@ -55,7 +55,7 @@ func TestRecursive(t *testing.T) {
 	defer cleanup()
 
 	// execute the package move
-	err := mvpkg.MvPkg(t.Logf, testDir, "source/testpkg", "destination/testpkg", []string{"-tags=special"}, false, true)
+	err := mvpkg.MvPkg(t.Logf, testDir+"/destination", "source/testpkg", "destination/testpkg", []string{"-tags=special"}, false, true)
 	if err != nil {
 		t.Fatalf("failed to run mvpkg: %s", err)
 	}

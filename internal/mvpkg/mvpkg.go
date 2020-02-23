@@ -29,13 +29,17 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 	if path.Base(rootSrc) != path.Base(rootDst) {
 		return fmt.Errorf("Soruce and destination package names are not the same. Renaming not supported yet.")
 	}
+	mod, modDir, usingModules := goModuleNameAndPath(pwd)
+	if !usingModules {
+		return fmt.Errorf("Not using go modules! Couldn't find go.mod file")
+	}
 	sources := []string{rootSrc}
 	if recursive {
-		err := filepath.Walk(filepath.Join(pwd, rootSrc), func(path string, info os.FileInfo, err error) error {
+		err := filepath.Walk(filepath.Join(modDir, rootSrc), func(path string, info os.FileInfo, err error) error {
 			if info == nil {
 				return nil
 			}
-			newPath := strings.TrimPrefix(path, pwd+"/")
+			newPath := strings.TrimPrefix(path, modDir+"/")
 			if newPath == rootSrc {
 				return nil
 			}
@@ -52,13 +56,9 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 
 	for _, src := range sources {
 		// XXX: We reload packages that moved after every time we move a package, but we could be smarter about it and remember what we moved!
-		mod, modDir, usingModules := goModuleNameAndPath(pwd)
-		if !usingModules {
-			return fmt.Errorf("Not using go modules! Couldn't find go.mod file")
-		}
 		loadPath := mod + "/..."
 		printf("Loading %s\n", loadPath)
-		pkgs, err := packages.Load(&packages.Config{Tests: true, BuildFlags: flags, Dir: pwd, Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports}, loadPath)
+		pkgs, err := packages.Load(&packages.Config{Tests: true, BuildFlags: flags, Dir: modDir, Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports}, loadPath)
 		if err != nil {
 			return fmt.Errorf("error loading packages %s: %s", loadPath, err)
 		}
