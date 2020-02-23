@@ -1,5 +1,4 @@
-mvpkg
------
+# mvpkg
 
 [![CircleCI](https://circleci.com/gh/vikstrous/mvpkg.svg?style=svg)](https://circleci.com/gh/vikstrous/mvpkg)
 [![codecov](https://codecov.io/gh/vikstrous/mvpkg/branch/master/graph/badge.svg)](https://codecov.io/gh/vikstrous/mvpkg)
@@ -11,13 +10,13 @@ written for go modules and with performance in mind, so let me know if it's not
 fast enough for you.
 
 
-Installation:
+## Installation:
 
 ```
 go get github.com/vikstrous/mvpkg
 ```
 
-Usage:
+## Usage:
 
 ```
 Usage of mvpkg: mvpkg <src> <dst>
