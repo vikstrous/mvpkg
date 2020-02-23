@@ -19,7 +19,7 @@ go get github.com/vikstrous/mvpkg
 ## Usage:
 
 ```
-Usage of mvpkg: mvpkg <src> <dst>
+Usage: mvpkg <src> <dst>
 
   mvpkg takes two positional arguments: a source and destination path
   It works only withing a single go module and only with go module support enabled.
