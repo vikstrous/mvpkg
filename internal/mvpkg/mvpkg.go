@@ -19,7 +19,7 @@ import (
 )
 
 // MvPkg moves a package from a source to a destination path within the same go module
-func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst string, dryRun bool, recursive bool) error {
+func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst string, flags []string, dryRun bool, recursive bool) error {
 	rootSrc = filepath.Clean(rootSrc)
 	rootDst = filepath.Clean(rootDst)
 	start := time.Now()
@@ -58,7 +58,7 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 		}
 		loadPath := mod + "/..."
 		printf("Loading %s\n", loadPath)
-		pkgs, err := packages.Load(&packages.Config{Tests: true, Dir: pwd, Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports}, loadPath)
+		pkgs, err := packages.Load(&packages.Config{Tests: true, BuildFlags: flags, Dir: pwd, Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports}, loadPath)
 		if err != nil {
 			return fmt.Errorf("error loading packages %s: %s", loadPath, err)
 		}

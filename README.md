@@ -25,6 +25,8 @@ Usage of mvpkg: mvpkg <src> <dst>
   It works only withing a single go module and only with go module support enabled.
   The source and destination paths must be relative to the root of the go module
 
+  -build-flags value
+        build tags to use while parsing source packages, can be specified morethan once; ex: -build-flags='-tags=foo bar'
   -dry-run
         print planned actions without executing them
   -recursive

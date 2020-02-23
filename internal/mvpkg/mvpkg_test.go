@@ -32,7 +32,7 @@ func TestBasic(t *testing.T) {
 	defer cleanup()
 
 	// execute the package move
-	err := mvpkg.MvPkg(t.Logf, testDir, "source/testpkg", "destination/testpkg", false, false)
+	err := mvpkg.MvPkg(t.Logf, testDir, "source/testpkg", "destination/testpkg", []string{"-tags=special"}, false, false)
 	if err != nil {
 		t.Fatalf("failed to run mvpkg: %s", err)
 	}
@@ -43,6 +43,7 @@ func TestBasic(t *testing.T) {
 		t.Fatalf("src file still exists")
 	}
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg.go"), filepath.Join(testDir, "destination/testpkg/testpkg.go"), true)
+	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_tag.go"), filepath.Join(testDir, "destination/testpkg/testpkg_tag.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_test.go"), filepath.Join(testDir, "destination/testpkg/testpkg_test.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_ext_test.go"), filepath.Join(testDir, "destination/testpkg/testpkg_ext_test.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "destination/destination.go.expected.non-recursive"), filepath.Join(testDir, "destination/destination.go"), true)
@@ -54,7 +55,7 @@ func TestRecursive(t *testing.T) {
 	defer cleanup()
 
 	// execute the package move
-	err := mvpkg.MvPkg(t.Logf, testDir, "source/testpkg", "destination/testpkg", false, true)
+	err := mvpkg.MvPkg(t.Logf, testDir, "source/testpkg", "destination/testpkg", []string{"-tags=special"}, false, true)
 	if err != nil {
 		t.Fatalf("failed to run mvpkg: %s", err)
 	}
@@ -65,6 +66,7 @@ func TestRecursive(t *testing.T) {
 		t.Fatalf("src file still exists")
 	}
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg.go"), filepath.Join(testDir, "destination/testpkg", "testpkg.go"), true)
+	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_tag.go"), filepath.Join(testDir, "destination/testpkg/testpkg_tag.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_test.go"), filepath.Join(testDir, "destination/testpkg", "testpkg_test.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_ext_test.go"), filepath.Join(testDir, "destination/testpkg", "testpkg_ext_test.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/nested/nested.go.expected.recursive"), filepath.Join(testDir, "destination/testpkg/nested/nested.go"), true)

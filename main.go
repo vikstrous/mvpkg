@@ -11,11 +11,13 @@ import (
 var dryRunFlag bool
 var recursiveFlag bool
 var verboseFlag bool
+var buildFlagsFlag arrayFlags
 
 func init() {
 	flag.BoolVar(&verboseFlag, "v", false, "verbose, print status while running")
 	flag.BoolVar(&dryRunFlag, "dry-run", false, "print planned actions without executing them")
 	flag.BoolVar(&recursiveFlag, "recursive", false, "recursively move all packages nested under the source package")
+	flag.Var(&buildFlagsFlag, "build-flags", "build tags to use while parsing source packages, can be specified morethan once; ex: -build-flags='-tags=foo bar'")
 }
 
 func main() {
@@ -44,9 +46,20 @@ func main() {
 			fmt.Printf(s, args...)
 		}
 	}
-	err = mvpkg.MvPkg(printf, pwd, flag.Arg(0), flag.Arg(1), dryRunFlag, recursiveFlag)
+	err = mvpkg.MvPkg(printf, pwd, flag.Arg(0), flag.Arg(1), []string(buildFlagsFlag), dryRunFlag, recursiveFlag)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
+}
+
+type arrayFlags []string
+
+func (i *arrayFlags) String() string {
+	return "my string representation"
+}
+
+func (i *arrayFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
 }
