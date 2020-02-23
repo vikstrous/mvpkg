@@ -71,11 +71,15 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 		srcPath := path.Clean(path.Join(mod, src))
 		dstPath := path.Clean(path.Join(mod, dst))
 		var srcPkg *packages.Package
+		var srcExtTestPkg *packages.Package
 
 		packagesToFix := []*packages.Package{}
 		for _, pkg := range pkgs {
 			if pkg.PkgPath == srcPath {
 				srcPkg = pkg
+			}
+			if pkg.PkgPath == srcPath+"_test" {
+				srcExtTestPkg = pkg
 			}
 			for imp := range pkg.Imports {
 				if imp == srcPath {
@@ -133,7 +137,11 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 				return fmt.Errorf("error creating directory %s: %s", dstDir, err)
 			}
 		}
-		for _, filename := range srcPkg.GoFiles {
+		srcFiles := srcPkg.GoFiles
+		if srcExtTestPkg != nil {
+			srcFiles = append(srcFiles, srcExtTestPkg.GoFiles...)
+		}
+		for _, filename := range srcFiles {
 			newPath := path.Join(dstDir, path.Base(filename))
 			if dryRun {
 				printf("would move %s to %s\n", filename, newPath)

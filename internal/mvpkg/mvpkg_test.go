@@ -43,6 +43,8 @@ func TestBasic(t *testing.T) {
 		t.Fatalf("src file still exists")
 	}
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg.go"), filepath.Join(testDir, "destination/testpkg/testpkg.go"), true)
+	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_test.go"), filepath.Join(testDir, "destination/testpkg/testpkg_test.go"), true)
+	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_ext_test.go"), filepath.Join(testDir, "destination/testpkg/testpkg_ext_test.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "destination/destination.go.expected.non-recursive"), filepath.Join(testDir, "destination/destination.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "destination/destination_test.go.expected.non-recursive"), filepath.Join(testDir, "destination/destination_test.go"), true)
 }
@@ -63,6 +65,8 @@ func TestRecursive(t *testing.T) {
 		t.Fatalf("src file still exists")
 	}
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg.go"), filepath.Join(testDir, "destination/testpkg", "testpkg.go"), true)
+	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_test.go"), filepath.Join(testDir, "destination/testpkg", "testpkg_test.go"), true)
+	diffFiles(t, filepath.Join(templateDir, "source/testpkg/testpkg_ext_test.go"), filepath.Join(testDir, "destination/testpkg", "testpkg_ext_test.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "source/testpkg/nested/nested.go.expected.recursive"), filepath.Join(testDir, "destination/testpkg/nested/nested.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "destination/destination.go.expected.recursive"), filepath.Join(testDir, "destination/destination.go"), true)
 	diffFiles(t, filepath.Join(templateDir, "destination/destination_test.go.expected.recursive"), filepath.Join(testDir, "destination/destination_test.go"), true)
