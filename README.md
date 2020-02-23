@@ -1,6 +1,10 @@
 mvpkg
 -----
 
+[![CircleCI](https://circleci.com/gh/vikstrous/mvpkg.svg?style=svg)](https://circleci.com/gh/vikstrous/mvpkg)
+[![codecov](https://codecov.io/gh/vikstrous/mvpkg/branch/master/graph/badge.svg)](https://codecov.io/gh/vikstrous/mvpkg)
+[![GolangCI](https://golangci.com/badges/github.com/vikstrous/mvpkg.svg)](https://golangci.com/r/github.com/vikstrous/mvpkg)
+
 mvpkg is a refactoring tool for Go codebases that allows you to move a package
 or a set of packages from one path to another within the same go module. It's
 written for go modules and with performance in mind, so let me know if it's not
