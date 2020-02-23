@@ -31,7 +31,7 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 	}
 	sources := []string{rootSrc}
 	if recursive {
-		filepath.Walk(filepath.Join(pwd, rootSrc), func(path string, info os.FileInfo, err error) error {
+		err := filepath.Walk(filepath.Join(pwd, rootSrc), func(path string, info os.FileInfo, err error) error {
 			if info == nil {
 				return nil
 			}
@@ -44,6 +44,9 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 			}
 			return nil
 		})
+		if err != nil {
+			return fmt.Errorf("failed to walk src tree: %s", err)
+		}
 	}
 	printf("Moving sources: %s\n", sources)
 
