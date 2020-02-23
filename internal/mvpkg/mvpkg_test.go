@@ -34,7 +34,7 @@ func compare(t testing.TB, expected, actual string) {
 	cmd.Stderr = stderr
 	err := cmd.Run()
 	if err != nil {
-		t.Fatalf("test comparison failed: %s\n%s\n%s\n", err, stdout, stderr)
+		t.Fatalf("test comparison failed: %s\n%s\n%s\n", err, stdout.String(), stderr.String())
 	}
 }
 
