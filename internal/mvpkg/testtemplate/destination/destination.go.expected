@@ -1,7 +1,0 @@
-package destination
-
-import "example.com/destination/testpkg"
-
-func exampleFunc() {
-	testpkg.ExampleFunc()
-}

@@ -1,8 +1,8 @@
 package destination
 
 import (
+	"example.com/destination/testpkg"
 	"example.com/epackage"
-	"example.com/source/testpkg"
 	"example.com/source/testpkg/nested"
 )
 

@@ -38,7 +38,13 @@ func main() {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
-	err = mvpkg.MvPkg(pwd, flag.Arg(0), flag.Arg(1), dryRunFlag, recursiveFlag, verboseFlag)
+	printf := func(s string, args ...interface{}) {}
+	if verboseFlag || dryRunFlag {
+		printf = func(s string, args ...interface{}) {
+			fmt.Printf(s, args...)
+		}
+	}
+	err = mvpkg.MvPkg(printf, pwd, flag.Arg(0), flag.Arg(1), dryRunFlag, recursiveFlag)
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
