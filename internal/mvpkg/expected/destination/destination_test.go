@@ -1,13 +1,13 @@
 package destination
 
 import (
-	"example.com/destination/testpkg"
+	"example.com/destination/testpkg2"
 	"example.com/epackage"
 	"example.com/source/testpkg/nested"
 )
 
 func exampleFunc() {
-	testpkg.ExampleFunc()
+	testpkg2.ExampleFunc()
 	nested.Stuff()
 	epackage.Func()
 }

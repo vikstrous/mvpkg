@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"golang.org/x/tools/go/ast/astutil"
@@ -49,18 +50,25 @@ func (p *pkgMover) init(pwd string, flags []string) error {
 func (p *pkgMover) move(src, dst string) error {
 	srcPkgPath := path.Clean(path.Join(p.modulePkgPath, src))
 	dstPkgPath := path.Clean(path.Join(p.modulePkgPath, dst))
-	var srcPkg *packages.Package
-	var srcExtTestPkg *packages.Package
+	renameFrom := path.Base(src)
+	renameTo := path.Base(dst)
+	var packageRenamer *regexp.Regexp
+	var testPackageRenamer *regexp.Regexp
+	if renameFrom != renameTo {
+		packageRenamer = regexp.MustCompile(fmt.Sprintf("(?m)^package %s$", regexp.QuoteMeta(renameFrom)))
+		testPackageRenamer = regexp.MustCompile(fmt.Sprintf("(?m)^package %s_test$", regexp.QuoteMeta(renameFrom)))
+	}
+	// avoid duplication in case the package files show up more than once
+	srcFiles := map[string]struct{}{}
 	for _, pkg := range p.pkgs {
-		if p.getPkgPath(pkg.PkgPath) == srcPkgPath {
-			srcPkg = pkg
-		}
-		if p.getPkgPath(pkg.PkgPath) == srcPkgPath+"_test" {
-			srcExtTestPkg = pkg
+		if p.getPkgPath(pkg.PkgPath) == srcPkgPath || p.getPkgPath(pkg.PkgPath) == srcPkgPath+"_test" {
+			for _, file := range pkg.GoFiles {
+				srcFiles[file] = struct{}{}
+			}
 		}
 	}
-	if srcPkg == nil {
-		return fmt.Errorf("Couldn't find source package %s", srcPkgPath)
+	if len(srcFiles) == 0 {
+		return fmt.Errorf("Couldn't find source package files %s", srcPkgPath)
 	}
 	dstDir := path.Join(p.moduleDir, dst)
 	if p.dryRun {
@@ -72,11 +80,8 @@ func (p *pkgMover) move(src, dst string) error {
 			return fmt.Errorf("error creating directory %s: %s", dstDir, err)
 		}
 	}
-	srcFiles := srcPkg.GoFiles
-	if srcExtTestPkg != nil {
-		srcFiles = append(srcFiles, srcExtTestPkg.GoFiles...)
-	}
-	for _, filename := range srcFiles {
+
+	for filename := range srcFiles {
 		newPath := path.Join(dstDir, path.Base(filename))
 		if p.dryRun {
 			p.log("would move %s to %s\n", filename, newPath)
@@ -85,6 +90,18 @@ func (p *pkgMover) move(src, dst string) error {
 			err := os.Rename(filename, newPath)
 			if err != nil {
 				return fmt.Errorf("error moving %s to %s: %s", filename, newPath, err)
+			}
+			if packageRenamer != nil {
+				fileBytes, err := ioutil.ReadFile(newPath)
+				if err != nil {
+					return fmt.Errorf("failed to read after move of %s: %s", newPath, err)
+				}
+				fileBytes = packageRenamer.ReplaceAll(fileBytes, []byte(fmt.Sprintf("package %s", renameTo)))
+				fileBytes = testPackageRenamer.ReplaceAll(fileBytes, []byte(fmt.Sprintf("package %s_test", renameTo)))
+				err = ioutil.WriteFile(newPath, fileBytes, 0644)
+				if err != nil {
+					return fmt.Errorf("failed to write after package rename of %s: %s", newPath, err)
+				}
 			}
 		}
 		p.alreadyMovedFiles[filename] = newPath
@@ -97,6 +114,8 @@ func (p *pkgMover) move(src, dst string) error {
 func (p *pkgMover) fixImports(src, dst string) error {
 	srcPkgPath := p.getPkgPath(path.Clean(path.Join(p.modulePkgPath, src)))
 	dstPkgPath := p.getPkgPath(path.Clean(path.Join(p.modulePkgPath, dst)))
+	renameFrom := path.Base(src)
+	renameTo := path.Base(dst)
 
 	packagesToFix := []*packages.Package{}
 	for _, pkg := range p.pkgs {
@@ -119,17 +138,32 @@ func (p *pkgMover) fixImports(src, dst string) error {
 				return fmt.Errorf("error reading file %s: %s", filename, err)
 			}
 
-			file, err := parser.ParseFile(fset, filename, srcBytes, parser.ParseComments)
+			astFile, err := parser.ParseFile(fset, filename, srcBytes, parser.ParseComments)
 			if err != nil {
 				return fmt.Errorf("error parsing file %s: %s", filename, err)
 			}
 
-			if astutil.RewriteImport(fset, file, srcPkgPath, dstPkgPath) {
-				ast.SortImports(fset, file)
+			if astutil.RewriteImport(fset, astFile, srcPkgPath, dstPkgPath) {
+				ast.SortImports(fset, astFile)
+
+				newFile := astutil.Apply(astFile, func(c *astutil.Cursor) bool {
+					switch n := c.Node().(type) {
+					case *ast.Ident:
+						if n.Name == renameFrom {
+							c.Replace(
+								&ast.Ident{
+									NamePos: n.NamePos,
+									Name:    renameTo,
+								},
+							)
+						}
+					}
+					return true
+				}, nil)
 				var buf bytes.Buffer
-				err := p.printConfig.Fprint(&buf, fset, file)
+				err := p.printConfig.Fprint(&buf, fset, newFile)
 				if err != nil {
-					return fmt.Errorf("error formatting file %s: %s", file.Name.Name, err)
+					return fmt.Errorf("error formatting file %s: %s", astFile.Name.Name, err)
 				}
 				if p.dryRun {
 					p.log("would rewrite %s\n", filename)
@@ -176,9 +210,6 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 	}()
 	rootSrc = filepath.Clean(rootSrc)
 	rootDst = filepath.Clean(rootDst)
-	if path.Base(rootSrc) != path.Base(rootDst) {
-		return fmt.Errorf("Soruce and destination package names are not the same. Renaming not supported yet.")
-	}
 	mover := &pkgMover{log: printf, dryRun: dryRun, alreadyMovedPkgs: map[string]string{}, alreadyMovedFiles: map[string]string{}, printConfig: &printer.Config{Mode: printer.UseSpaces | printer.TabIndent, Tabwidth: 8}}
 	err := mover.init(pwd, flags)
 	if err != nil {

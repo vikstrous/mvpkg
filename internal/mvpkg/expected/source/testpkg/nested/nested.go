@@ -3,10 +3,10 @@ package nested
 import (
 	"fmt"
 
-	"example.com/destination/testpkg"
+	"example.com/destination/testpkg2"
 )
 
 func Stuff() {
-	testpkg.ExampleFunc()
+	testpkg2.ExampleFunc()
 	fmt.Println("stuff")
 }

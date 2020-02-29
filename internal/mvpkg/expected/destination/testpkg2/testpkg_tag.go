@@ -1,4 +1,6 @@
-package testpkg
+// +build special
+
+package testpkg2
 
 import "fmt"
 
