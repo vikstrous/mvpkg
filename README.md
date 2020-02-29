@@ -28,7 +28,8 @@ Usage: mvpkg <src> <dst>
   The source and destination paths must be relative to the root of the go module
 
   -build-flags value
-        build tags to use while parsing source packages, can be specified morethan once; ex: -build-flags='-tags=foo bar'
+        build tags to use while parsing source packages, can be specified morethan once
+        ex: -build-flags='-tags=foo bar'
   -dry-run
         print planned actions without executing them
   -recursive
