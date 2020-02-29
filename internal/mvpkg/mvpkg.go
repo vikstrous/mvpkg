@@ -97,7 +97,8 @@ func (p *pkgMover) move(src, dst string) error {
 	}
 
 	if len(srcFiles) == 0 {
-		return fmt.Errorf("couldn't find source package files %s", srcPkgPath)
+		// nothing to move
+		return nil
 	}
 
 	dstDir := path.Join(p.moduleDir, dst)
