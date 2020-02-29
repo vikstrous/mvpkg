@@ -192,18 +192,37 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 	if astutil.RewriteImport(fset, astFile, srcPkgPath, dstPkgPath) {
 		ast.SortImports(fset, astFile)
 
-		newFile := astutil.Apply(astFile, func(c *astutil.Cursor) bool {
-			n, ok := c.Node().(*ast.Ident)
-			if ok && n.Name == renameFrom && n.Obj == nil {
-				c.Replace(
-					&ast.Ident{
-						NamePos: n.NamePos,
-						Name:    renameTo,
-					},
-				)
-			}
-			return true
-		}, nil)
+		newFile := ast.Node(astFile)
+		if renameFrom != renameTo {
+			// reserve the renameTo name by renaming any existing identifiers that mention it
+			// TODO: also alias any imports that mention it
+			newFile = astutil.Apply(newFile, func(c *astutil.Cursor) bool {
+				n, ok := c.Node().(*ast.Ident)
+				if ok && n.Name == renameTo {
+					c.Replace(
+						&ast.Ident{
+							NamePos: n.NamePos,
+							Name:    renameTo + "_",
+						},
+					)
+				}
+				return true
+			}, nil)
+
+			// rename the old name to the new name everywhere (unless the old reference was a var or other identifier)
+			newFile = astutil.Apply(newFile, func(c *astutil.Cursor) bool {
+				n, ok := c.Node().(*ast.Ident)
+				if ok && n.Name == renameFrom && n.Obj == nil {
+					c.Replace(
+						&ast.Ident{
+							NamePos: n.NamePos,
+							Name:    renameTo,
+						},
+					)
+				}
+				return true
+			}, nil)
+		}
 
 		var buf bytes.Buffer
 
