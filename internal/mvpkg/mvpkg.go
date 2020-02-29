@@ -194,7 +194,7 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 
 		newFile := astutil.Apply(astFile, func(c *astutil.Cursor) bool {
 			n, ok := c.Node().(*ast.Ident)
-			if ok && n.Name == renameFrom {
+			if ok && n.Name == renameFrom && n.Obj == nil {
 				c.Replace(
 					&ast.Ident{
 						NamePos: n.NamePos,
