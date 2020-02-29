@@ -10,12 +10,16 @@ import (
 // goModuleNameAndPath returns the name of the current go module if there is a go.mod file in the directory tree
 // If not, it returns false
 func goModuleNameAndPath(dir string) (string, string, bool) {
+	modregex := regexp.MustCompile("module (.*)\n")
+
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		panic(err)
 	}
+
 	dir = filepath.ToSlash(dir)
 	modDir := dir
+
 	for {
 		f, err := ioutil.ReadFile(filepath.Join(modDir, "go.mod"))
 		if err == nil {
@@ -32,10 +36,9 @@ func goModuleNameAndPath(dir string) (string, string, bool) {
 			// Walked all the way to the root and didnt find anything :'(
 			break
 		}
+
 		modDir = parentDir
 	}
 
 	return "", "", false
 }
-
-var modregex = regexp.MustCompile("module (.*)\n")

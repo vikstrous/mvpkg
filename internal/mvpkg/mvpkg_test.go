@@ -32,6 +32,7 @@ func compare(t testing.TB, expected, actual string) {
 	stderr := &bytes.Buffer{}
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
+
 	err := cmd.Run()
 	if err != nil {
 		t.Fatalf("test comparison failed: %s\n%s\n%s\n", err, stdout.String(), stderr.String())
@@ -40,6 +41,7 @@ func compare(t testing.TB, expected, actual string) {
 
 func TestBasic(t *testing.T) {
 	setup(t)
+
 	defer cleanup()
 
 	// execute the package move
@@ -54,6 +56,7 @@ func TestBasic(t *testing.T) {
 
 func TestRecursive(t *testing.T) {
 	setup(t)
+
 	defer cleanup()
 
 	// execute the package move
