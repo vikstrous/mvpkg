@@ -15,6 +15,8 @@ jobs:
           paths:
             - '/go/pkg'
       - run: go test -race -coverprofile=coverage.txt -covermode=atomic -coverpkg=./... ./...
+      - run: grep -v main.go coverage.txt > coverage.txt.fixed
+      - run: mv coverage.txt.fixed coverage.txt
       - run: bash <(curl -s https://codecov.io/bash)
   go_lint:
     docker:
