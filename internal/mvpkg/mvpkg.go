@@ -12,6 +12,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"time"
 
 	"golang.org/x/tools/go/ast/astutil"
@@ -173,11 +174,78 @@ func (p *pkgMover) fixImports(src, dst string) error {
 	return nil
 }
 
+func renameConflicting(astFile *ast.File, packageName, replacement string) *ast.File {
+	// if the destination import name is taken, we have to rename it
+	newFile := astutil.Apply(astFile, func(c *astutil.Cursor) bool {
+		imp, ok := c.Node().(*ast.ImportSpec)
+		if ok {
+			// check if there's a conflicting destination name or not and optionally rename the import
+			newName := imp.Name
+
+			if imp.Name != nil {
+				if imp.Name.Name == packageName {
+					newName.Name = replacement
+				}
+			} else {
+				pathValue, err := strconv.Unquote(imp.Path.Value)
+				if err != nil {
+					panic(err)
+				}
+				if path.Base(pathValue) == packageName {
+					newName = &ast.Ident{
+						NamePos: imp.Pos(),
+						Name:    replacement,
+					}
+				}
+			}
+
+			c.Replace(
+				&ast.ImportSpec{
+					Comment: imp.Comment,
+					Doc:     imp.Doc,
+					Path:    imp.Path,
+					Name:    newName,
+				},
+			)
+		}
+		return true
+	}, nil)
+
+	// reserve the renameTo name by renaming any existing identifiers that mention it
+	newFile = astutil.Apply(newFile, func(c *astutil.Cursor) bool {
+		n, ok := c.Node().(*ast.Ident)
+		if ok && n.Name == packageName {
+			c.Replace(
+				&ast.Ident{
+					NamePos: n.NamePos,
+					Name:    replacement,
+				},
+			)
+		}
+		return true
+	}, nil)
+
+	return newFile.(*ast.File)
+}
+
+func renameIdents(astFile *ast.File, renameFrom, renameTo string) *ast.File {
+	return astutil.Apply(astFile, func(c *astutil.Cursor) bool {
+		n, ok := c.Node().(*ast.Ident)
+		if ok && n.Name == renameFrom && n.Obj == nil {
+			c.Replace(
+				&ast.Ident{
+					NamePos: n.NamePos,
+					Name:    renameTo,
+				},
+			)
+		}
+		return true
+	}, nil).(*ast.File)
+}
+
 func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename string) error {
 	srcPkgPath := p.getPkgPath(path.Clean(path.Join(p.modulePkgPath, src)))
 	dstPkgPath := p.getPkgPath(path.Clean(path.Join(p.modulePkgPath, dst)))
-	renameFrom := path.Base(src)
-	renameTo := path.Base(dst)
 
 	srcBytes, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -189,56 +257,40 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 		return fmt.Errorf("error parsing file %s: %w", filename, err)
 	}
 
-	if astutil.RewriteImport(fset, astFile, srcPkgPath, dstPkgPath) {
-		ast.SortImports(fset, astFile)
+	// exit early if the file doesn't contain source import
+	if !astutil.UsesImport(astFile, srcPkgPath) {
+		return nil
+	}
 
-		newFile := ast.Node(astFile)
-		if renameFrom != renameTo {
-			// reserve the renameTo name by renaming any existing identifiers that mention it
-			// TODO: also alias any imports that mention it
-			newFile = astutil.Apply(newFile, func(c *astutil.Cursor) bool {
-				n, ok := c.Node().(*ast.Ident)
-				if ok && n.Name == renameTo {
-					c.Replace(
-						&ast.Ident{
-							NamePos: n.NamePos,
-							Name:    renameTo + "_",
-						},
-					)
-				}
-				return true
-			}, nil)
+	renameFrom := path.Base(src)
+	renameTo := path.Base(dst)
 
-			// rename the old name to the new name everywhere (unless the old reference was a var or other identifier)
-			newFile = astutil.Apply(newFile, func(c *astutil.Cursor) bool {
-				n, ok := c.Node().(*ast.Ident)
-				if ok && n.Name == renameFrom && n.Obj == nil {
-					c.Replace(
-						&ast.Ident{
-							NamePos: n.NamePos,
-							Name:    renameTo,
-						},
-					)
-				}
-				return true
-			}, nil)
-		}
+	if renameFrom != renameTo {
+		astFile = renameConflicting(astFile, renameTo, renameTo+"_")
+		astFile = renameIdents(astFile, renameFrom, renameTo)
+	}
 
-		var buf bytes.Buffer
+	rewrote := astutil.RewriteImport(fset, astFile, srcPkgPath, dstPkgPath)
+	if !rewrote {
+		return fmt.Errorf("failed to rewrite import %s to %s in %s", srcPkgPath, dstPkgPath, filename)
+	}
 
-		err := p.printConfig.Fprint(&buf, fset, newFile)
+	ast.SortImports(fset, astFile)
+
+	var buf bytes.Buffer
+
+	err = p.printConfig.Fprint(&buf, fset, astFile)
+	if err != nil {
+		return fmt.Errorf("error formatting file %s: %w", astFile.Name.Name, err)
+	}
+
+	if p.dryRun {
+		p.log("would rewrite %s\n", filename)
+	} else {
+		p.log("rewriting %s\n", filename)
+		err = ioutil.WriteFile(filename, buf.Bytes(), 0644)
 		if err != nil {
-			return fmt.Errorf("error formatting file %s: %w", astFile.Name.Name, err)
-		}
-
-		if p.dryRun {
-			p.log("would rewrite %s\n", filename)
-		} else {
-			p.log("rewriting %s\n", filename)
-			err = ioutil.WriteFile(filename, buf.Bytes(), 0644)
-			if err != nil {
-				return fmt.Errorf("error writing file %s: %w", filename, err)
-			}
+			return fmt.Errorf("error writing file %s: %w", filename, err)
 		}
 	}
 
