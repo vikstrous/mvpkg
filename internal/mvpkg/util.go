@@ -8,7 +8,7 @@ import (
 
 // adapted from https://github.com/99designs/gqlgen/blob/8ed2ec599b8faed3751177fd4335b1b3c3a79922/internal/code/imports.go
 // goModuleNameAndPath returns the name of the current go module if there is a go.mod file in the directory tree
-// If not, it returns false
+// If not, it returns false.
 func goModuleNameAndPath(dir string) (string, string, bool) {
 	modregex := regexp.MustCompile("module (.*)\n")
 
