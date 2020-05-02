@@ -29,10 +29,12 @@ type pkgMover struct {
 	printConfig       *printer.Config
 }
 
+var errNoGoMod = fmt.Errorf("couldn't find go.mod file")
+
 func (p *pkgMover) init(pwd string, flags []string) error {
 	mod, modDir, usingModules := goModuleNameAndPath(pwd)
 	if !usingModules {
-		return fmt.Errorf("couldn't find go.mod file")
+		return errNoGoMod
 	}
 
 	p.modulePkgPath = mod
@@ -42,7 +44,7 @@ func (p *pkgMover) init(pwd string, flags []string) error {
 
 	pkgs, err := packages.Load(&packages.Config{Tests: true, BuildFlags: flags, Dir: modDir, Mode: packages.NeedName | packages.NeedFiles | packages.NeedImports}, loadPath)
 	if err != nil {
-		return fmt.Errorf("error loading packages %s: %s", loadPath, err)
+		return fmt.Errorf("error loading packages %s: %w", loadPath, err)
 	}
 
 	p.log("Loaded %d packages\n", len(pkgs))
@@ -73,7 +75,7 @@ func makeRenamer(src, dst string) func(filename string) error {
 		fileBytes = packageRenamer.ReplaceAll(fileBytes, []byte(fmt.Sprintf("package %s", renameTo)))
 		fileBytes = testPackageRenamer.ReplaceAll(fileBytes, []byte(fmt.Sprintf("package %s_test", renameTo)))
 
-		err = ioutil.WriteFile(filename, fileBytes, 0644)
+		err = ioutil.WriteFile(filename, fileBytes, 0600)
 		if err != nil {
 			return fmt.Errorf("failed to write after package rename of %s: %w", filename, err)
 		}
@@ -189,37 +191,38 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 		return fmt.Errorf("error parsing file %s: %w", filename, err)
 	}
 
-	if astutil.RewriteImport(fset, astFile, srcPkgPath, dstPkgPath) {
-		ast.SortImports(fset, astFile)
+	if !astutil.RewriteImport(fset, astFile, srcPkgPath, dstPkgPath) {
+		return nil
+	}
 
-		newFile := astutil.Apply(astFile, func(c *astutil.Cursor) bool {
-			n, ok := c.Node().(*ast.Ident)
-			if ok && n.Name == renameFrom && n.Obj == nil {
-				c.Replace(
-					&ast.Ident{
-						NamePos: n.NamePos,
-						Name:    renameTo,
-					},
-				)
-			}
-			return true
-		}, nil)
+	ast.SortImports(fset, astFile)
 
-		var buf bytes.Buffer
-
-		err := p.printConfig.Fprint(&buf, fset, newFile)
-		if err != nil {
-			return fmt.Errorf("error formatting file %s: %w", astFile.Name.Name, err)
+	newFile := astutil.Apply(astFile, func(c *astutil.Cursor) bool {
+		n, ok := c.Node().(*ast.Ident)
+		if ok && n.Name == renameFrom && n.Obj == nil {
+			c.Replace(&ast.Ident{
+				NamePos: n.NamePos,
+				Name:    renameTo,
+			})
 		}
 
-		if p.dryRun {
-			p.log("would rewrite %s\n", filename)
-		} else {
-			p.log("rewriting %s\n", filename)
-			err = ioutil.WriteFile(filename, buf.Bytes(), 0644)
-			if err != nil {
-				return fmt.Errorf("error writing file %s: %w", filename, err)
-			}
+		return true
+	}, nil)
+
+	var buf bytes.Buffer
+
+	err = p.printConfig.Fprint(&buf, fset, newFile)
+	if err != nil {
+		return fmt.Errorf("error formatting file %s: %w", astFile.Name.Name, err)
+	}
+
+	if p.dryRun {
+		p.log("would rewrite %s\n", filename)
+	} else {
+		p.log("rewriting %s\n", filename)
+		err = ioutil.WriteFile(filename, buf.Bytes(), 0600)
+		if err != nil {
+			return fmt.Errorf("error writing file %s: %w", filename, err)
 		}
 	}
 
@@ -235,7 +238,7 @@ func (p *pkgMover) getPkgPath(path string) string {
 	return path
 }
 
-// getFilePath is meant to be used on files (not directories) with file paths relvative to the root of the module
+// getFilePath is meant to be used on files (not directories) with file paths relvative to the root of the module.
 func (p *pkgMover) getFilePath(filePath string) string {
 	newPath, ok := p.alreadyMovedFiles[filePath]
 	if ok {
@@ -250,7 +253,7 @@ type movePair struct {
 	dst string
 }
 
-// MvPkg moves a package from a source to a destination path within the same go module
+// MvPkg moves a package from a source to a destination path within the same go module.
 func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst string, flags []string, dryRun bool, recursive bool) error {
 	start := time.Now()
 
@@ -267,38 +270,9 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 		return fmt.Errorf("failed to initialize mover: %w", err)
 	}
 
-	mPairs := []movePair{{src: rootSrc, dst: rootDst}}
-
-	// add additional packages to the list of packages to move if we are using recursive mode
-	if recursive {
-		err = filepath.Walk(filepath.Join(mover.moduleDir, rootSrc), func(filePath string, info os.FileInfo, iterationErr error) error {
-			if info == nil || iterationErr != nil {
-				return fmt.Errorf("iteration error: %w", err)
-			}
-			if !info.IsDir() {
-				return nil
-			}
-			srcFilePath, err := filepath.Rel(mover.moduleDir, filePath) //nolint:govet
-			if err != nil {
-				return fmt.Errorf("failed to parse walk path as relative to module root: %s : %s", filePath, mover.moduleDir)
-			}
-			// XXX: we are comparing a filepath with what's supposed to be a relvative module path. That's not great.
-			if srcFilePath == rootSrc {
-				return nil
-			}
-			// modify dst to include the suffix from src being a subdirectory
-			// XXX: we are still treating filepaths and module paths interchanably here
-			srcSuffix, err := filepath.Rel(rootSrc, srcFilePath)
-			dst := path.Join(rootDst, srcSuffix)
-			if err != nil {
-				return fmt.Errorf("failed to srcFilePath as relative to rootSrc: %s : %s", srcFilePath, rootSrc)
-			}
-			mPairs = append(mPairs, movePair{src: srcFilePath, dst: dst})
-			return nil
-		})
-		if err != nil {
-			return fmt.Errorf("failed to walk src tree: %w", err)
-		}
+	mPairs, err := findMovePairs(rootSrc, rootDst, mover.moduleDir, recursive)
+	if err != nil {
+		return fmt.Errorf("failed to find move pairs: %w", err)
 	}
 
 	for _, mPair := range mPairs {
@@ -310,14 +284,54 @@ func MvPkg(printf func(s string, args ...interface{}), pwd, rootSrc, rootDst str
 
 		err = mover.fixImports(mPair.src, mPair.dst)
 		if err != nil {
-			return fmt.Errorf("failed to fix imports for %s -> %s: %s", mPair.src, mPair.dst, err)
+			return fmt.Errorf("failed to fix imports for %s -> %s: %w", mPair.src, mPair.dst, err)
 		}
 
 		err = mover.move(mPair.src, mPair.dst)
 		if err != nil {
-			return fmt.Errorf("failed to move %s to %s: %s", mPair.src, mPair.dst, err)
+			return fmt.Errorf("failed to move %s to %s: %w", mPair.src, mPair.dst, err)
 		}
 	}
 
 	return nil
+}
+
+func findMovePairs(rootSrc, rootDst, moduleDir string, recursive bool) ([]movePair, error) {
+	mPairs := []movePair{{src: rootSrc, dst: rootDst}}
+
+	// add additional packages to the list of packages to move if we are using recursive mode
+	if !recursive {
+		return mPairs, nil
+	}
+
+	err := filepath.Walk(filepath.Join(moduleDir, rootSrc), func(filePath string, info os.FileInfo, iterationErr error) error {
+		if info == nil || iterationErr != nil {
+			return fmt.Errorf("iteration error: %w", iterationErr)
+		}
+		if !info.IsDir() {
+			return nil
+		}
+		srcFilePath, err := filepath.Rel(moduleDir, filePath)
+		if err != nil {
+			return fmt.Errorf("failed to parse walk path %s as relative to module root %s: %w", filePath, moduleDir, err)
+		}
+		// XXX: we are comparing a filepath with what's supposed to be a relvative module path. That's not great.
+		if srcFilePath == rootSrc {
+			return nil
+		}
+		// modify dst to include the suffix from src being a subdirectory
+		// XXX: we are still treating filepaths and module paths interchanably here
+		srcSuffix, err := filepath.Rel(rootSrc, srcFilePath)
+		if err != nil {
+			return fmt.Errorf("failed to parse srcFilePath %s as relative to rootSrc %s: %w", srcFilePath, rootSrc, err)
+		}
+		dst := path.Join(rootDst, srcSuffix)
+		mPairs = append(mPairs, movePair{src: srcFilePath, dst: dst})
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to walk src tree: %w", err)
+	}
+
+	return mPairs, nil
 }
