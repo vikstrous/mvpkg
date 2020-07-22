@@ -75,7 +75,7 @@ func makeRenamer(src, dst string) func(filename string) error {
 		fileBytes = packageRenamer.ReplaceAll(fileBytes, []byte(fmt.Sprintf("package %s", renameTo)))
 		fileBytes = testPackageRenamer.ReplaceAll(fileBytes, []byte(fmt.Sprintf("package %s_test", renameTo)))
 
-		err = ioutil.WriteFile(filename, fileBytes, 0600)
+		err = ioutil.WriteFile(filename, fileBytes, 0o600)
 		if err != nil {
 			return fmt.Errorf("failed to write after package rename of %s: %w", filename, err)
 		}
@@ -109,7 +109,7 @@ func (p *pkgMover) move(src, dst string) error {
 		p.log("would create directory %s\n", dstDir)
 	} else {
 		p.log("creating directory %s\n", dstDir)
-		err := os.MkdirAll(dstDir, 0755)
+		err := os.MkdirAll(dstDir, 0o755)
 		if err != nil {
 			return fmt.Errorf("error creating directory %s: %w", dstDir, err)
 		}
@@ -220,7 +220,7 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 		p.log("would rewrite %s\n", filename)
 	} else {
 		p.log("rewriting %s\n", filename)
-		err = ioutil.WriteFile(filename, buf.Bytes(), 0600)
+		err = ioutil.WriteFile(filename, buf.Bytes(), 0o600)
 		if err != nil {
 			return fmt.Errorf("error writing file %s: %w", filename, err)
 		}
