@@ -9,13 +9,16 @@ import (
 	"github.com/vikstrous/mvpkg/internal/mvpkg"
 )
 
-const templateDir = "testtemplate"
-const testDir = "testdir"
+const (
+	templateDir = "testtemplate"
+	testDir     = "testdir"
+)
 
 func cleanup() {
 	// ignore errors
 	os.RemoveAll(testDir)
 }
+
 func setup(t testing.TB) {
 	cleanup()
 	// lazy test code... using a binary dependency rather than a library one
