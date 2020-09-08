@@ -152,6 +152,7 @@ func (p *pkgMover) fixImports(src, dst string) error {
 		for imp := range pkg.Imports {
 			if imp == srcPkgPath {
 				packagesToFix = append(packagesToFix, pkg)
+
 				break
 			}
 		}
@@ -327,6 +328,7 @@ func findMovePairs(rootSrc, rootDst, moduleDir string, recursive bool) ([]movePa
 		}
 		dst := path.Join(rootDst, srcSuffix)
 		mPairs = append(mPairs, movePair{src: srcFilePath, dst: dst})
+
 		return nil
 	})
 	if err != nil {
