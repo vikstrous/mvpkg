@@ -3,6 +3,7 @@ linters:
   disable:
     - lll
     - gomnd
+    - exhaustivestruct
 
 linters-settings:
   funlen:
