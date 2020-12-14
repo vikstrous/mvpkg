@@ -4,6 +4,7 @@ linters:
     - lll
     - gomnd
     - exhaustivestruct
+    - paralleltest
 
 linters-settings:
   funlen:
