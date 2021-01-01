@@ -5,6 +5,7 @@ linters:
     - gomnd
     - exhaustivestruct
     - paralleltest
+    - forbidigo
 
 linters-settings:
   funlen:
