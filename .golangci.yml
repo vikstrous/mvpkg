@@ -6,6 +6,7 @@ linters:
     - exhaustivestruct
     - paralleltest
     - forbidigo
+    - ifshort
 
 linters-settings:
   funlen:
