@@ -7,6 +7,7 @@ linters:
     - paralleltest
     - forbidigo
     - ifshort
+    - cyclop
 
 linters-settings:
   funlen:
