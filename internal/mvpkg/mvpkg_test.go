@@ -24,6 +24,7 @@ func cleanup() {
 }
 
 func setup(tb testing.TB) {
+	tb.Helper()
 	cleanup()
 	// lazy test code... using a binary dependency rather than a library one
 	err := exec.Command("cp", "-r", templateDir, testDir).Run()
@@ -33,6 +34,7 @@ func setup(tb testing.TB) {
 }
 
 func compare(tb testing.TB, expected, actual string) {
+	tb.Helper()
 	// lazy test code... using a binary dependency rather than a library one
 	cmd := exec.Command("diff", "-r", expected, actual)
 	stdout := &bytes.Buffer{}
