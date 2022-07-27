@@ -199,12 +199,25 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 	ast.SortImports(fset, astFile)
 
 	newFile := astutil.Apply(astFile, func(c *astutil.Cursor) bool {
-		n, ok := c.Node().(*ast.Ident)
-		if ok && n.Name == renameFrom && n.Obj == nil {
-			c.Replace(&ast.Ident{
-				NamePos: n.NamePos,
-				Name:    renameTo,
-			})
+		selExpr, ok := c.Node().(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+
+		ident, ok := selExpr.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+
+		if ident.Name == renameFrom && ident.Obj == nil {
+			c.Replace(
+				&ast.SelectorExpr{
+					Sel: selExpr.Sel,
+					X: &ast.Ident{
+						NamePos: selExpr.Sel.NamePos,
+						Name:    renameTo,
+					},
+				})
 		}
 
 		return true
