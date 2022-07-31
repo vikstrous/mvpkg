@@ -198,7 +198,7 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 
 	ast.SortImports(fset, astFile)
 
-	newFile := astutil.Apply(astFile, func(c *astutil.Cursor) bool {
+	applyFunc := func(c *astutil.Cursor) bool {
 		selExpr, ok := c.Node().(*ast.SelectorExpr)
 		if !ok {
 			return true
@@ -221,7 +221,15 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 		}
 
 		return true
-	}, nil)
+	}
+
+	if isImportAliased(astFile, dstPkgPath) {
+		// if the import of the package we are moving has an import alias,
+		// we don't need to rename identifiers in the file.
+		applyFunc = nil
+	}
+
+	newFile := astutil.Apply(astFile, applyFunc, nil)
 
 	var buf bytes.Buffer
 
@@ -243,6 +251,21 @@ func (p *pkgMover) fixImportsInFile(fset *token.FileSet, src, dst, filename stri
 	return nil
 }
 
+// isImportAliased returns true if the import with the given path has an import alias in the given file.
+func isImportAliased(file *ast.File, path string) bool {
+	for _, imp := range file.Imports {
+		if imp.Path == nil {
+			continue
+		}
+
+		if imp.Path.Value == fmt.Sprintf("%q", path) {
+			return imp.Name != nil
+		}
+	}
+
+	return false
+}
+
 func (p *pkgMover) getPkgPath(path string) string {
 	newPath, ok := p.alreadyMovedPkgs[path]
 	if ok {
@@ -252,7 +275,7 @@ func (p *pkgMover) getPkgPath(path string) string {
 	return path
 }
 
-// getFilePath is meant to be used on files (not directories) with file paths relvative to the root of the module.
+// getFilePath is meant to be used on files (not directories) with file paths relative to the root of the module.
 func (p *pkgMover) getFilePath(filePath string) string {
 	newPath, ok := p.alreadyMovedFiles[filePath]
 	if ok {

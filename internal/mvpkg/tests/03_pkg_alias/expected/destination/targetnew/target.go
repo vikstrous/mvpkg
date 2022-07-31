@@ -1,0 +1,3 @@
+package targetnew
+
+func Foo() {}

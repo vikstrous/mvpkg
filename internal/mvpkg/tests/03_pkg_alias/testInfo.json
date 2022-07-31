@@ -1,0 +1,6 @@
+{
+    "pwd": ".",
+    "source": "./source/target",
+    "destination": "./destination/targetnew",
+    "build_flags": []
+}
