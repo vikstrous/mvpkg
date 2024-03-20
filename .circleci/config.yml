@@ -20,7 +20,7 @@ jobs:
       - run: bash <(curl -s https://codecov.io/bash)
   go_lint:
     docker:
-    - image: golangci/golangci-lint:v1.39.0
+    - image: golangci/golangci-lint:v1.57.1
     steps:
       - checkout
       - restore_cache:
